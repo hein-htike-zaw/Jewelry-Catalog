@@ -6,6 +6,7 @@ import { SiteFooter } from '@/components/site-footer'
 import { ProductGallery } from '@/components/product/product-gallery'
 import { InquiryDialog } from '@/components/product/inquiry-dialog'
 import { ProductCard } from '@/components/product-card'
+import { VariantPicker } from '@/components/product/variant-picker'
 import { getProduct, getRelated, products } from '@/lib/products'
 
 export function generateStaticParams() {
@@ -59,9 +60,11 @@ export default async function ProductPage({
               <h1 className="mt-4 font-serif text-4xl leading-tight text-foreground lg:text-5xl">
                 {product.name}
               </h1>
-              <p className="mt-3 text-xs tracking-[0.14em] text-muted-foreground uppercase">
-                SKU {product.sku}
-              </p>
+              {product.sku && (
+                <p className="mt-3 text-xs tracking-[0.14em] text-muted-foreground uppercase">
+                  SKU {product.sku}
+                </p>
+              )}
 
               <p className="mt-7 max-w-md text-[15px] leading-relaxed text-muted-foreground">
                 {product.description}
@@ -73,6 +76,11 @@ export default async function ProductPage({
                 <Fact label="Type" value={product.type} />
                 <Fact label="Weight" value={product.weight} />
               </div>
+
+              {((product.lengths && product.lengths.length > 0) ||
+                (product.variants && product.variants.length > 0)) && (
+                <VariantPicker lengths={product.lengths} variants={product.variants} />
+              )}
 
               {/* Specs */}
               <div className="mt-8">

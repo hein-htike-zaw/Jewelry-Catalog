@@ -26,7 +26,11 @@ export default async function CatalogPage({
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex-1">
-        <CatalogView initialCollection={collection} initialType={type} />
+        <CatalogView
+          key={`${collection ?? 'all'}-${type ?? 'all'}`}
+          initialCollection={collection}
+          initialType={type}
+        />
       </main>
       <SiteFooter />
     </div>

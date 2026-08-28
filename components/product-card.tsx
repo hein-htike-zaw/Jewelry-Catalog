@@ -3,6 +3,14 @@ import Image from 'next/image'
 import type { Product } from '@/lib/products'
 
 export function ProductCard({ product }: { product: Product }) {
+  // Only worth stating on the card when every variant shares one
+  // construction — if a product offers both, that choice belongs on the
+  // detail page, not as a single (potentially misleading) badge here.
+  const constructions = product.variants
+    ? [...new Set(product.variants.map((v) => v.construction))]
+    : []
+  const construction = constructions.length === 1 ? constructions[0] : null
+
   return (
     <Link href={`/product/${product.slug}`} className="group block">
       <div className="relative aspect-[4/5] overflow-hidden border border-border/70 bg-card">
@@ -16,22 +24,31 @@ export function ProductCard({ product }: { product: Product }) {
         <span className="absolute top-3 left-3 bg-background/80 px-2.5 py-1 text-[10px] tracking-[0.16em] text-foreground/70 uppercase backdrop-blur-sm">
           {product.collection}
         </span>
-      </div>
-      <div className="pt-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-serif text-lg leading-snug text-foreground transition-colors group-hover:text-gold-foreground">
-            {product.name}
-          </h3>
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
           {product.karat && (
-            <span className="shrink-0 text-xs tracking-[0.14em] text-gold-foreground">
+            <span className="bg-background/80 px-2.5 py-1 text-[10px] tracking-[0.16em] text-gold-foreground uppercase backdrop-blur-sm">
               {product.karat}
             </span>
           )}
+          {construction && (
+            <span className="bg-background/80 px-2.5 py-1 text-[10px] tracking-[0.16em] text-foreground/70 uppercase backdrop-blur-sm">
+              {construction}
+            </span>
+          )}
         </div>
+      </div>
+      <div className="pt-4">
+        <h3 className="font-serif text-lg leading-snug text-foreground transition-colors group-hover:text-gold-foreground">
+          {product.name}
+        </h3>
         <div className="mt-1.5 flex items-center gap-2 text-xs tracking-[0.1em] text-muted-foreground uppercase">
           <span>{product.type}</span>
-          <span className="text-border">|</span>
-          <span>{product.sku}</span>
+          {product.sku && (
+            <>
+              <span className="text-border">|</span>
+              <span>{product.sku}</span>
+            </>
+          )}
         </div>
       </div>
     </Link>
