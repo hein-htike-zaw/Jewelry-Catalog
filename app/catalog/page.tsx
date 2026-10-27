@@ -11,6 +11,7 @@ const validTypes: ProductType[] = [
   'Pendants',
   'Anklets',
   'Timepieces',
+  'Earrings',
 ]
 
 export default async function CatalogPage({
