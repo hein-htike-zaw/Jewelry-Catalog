@@ -36,7 +36,7 @@ export function Hero() {
             {[
               ['30+', 'Years in the district'],
               ['1,200+', 'SKUs in stock'],
-              ['10K–18K', 'Gold purities'],
+              ['10K–14K', 'Gold purities'],
             ].map(([stat, label]) => (
               <div key={label}>
                 <div className="font-serif text-2xl text-foreground">{stat}</div>

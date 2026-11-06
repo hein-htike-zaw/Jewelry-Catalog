@@ -62,9 +62,11 @@ export function InquiryDialog({ product }: { product: Product }) {
                 <h3 className="mt-3 font-serif text-3xl text-foreground">
                   {product.name}
                 </h3>
-                <p className="mt-1 text-xs tracking-[0.12em] text-muted-foreground uppercase">
-                  SKU {product.sku}
-                </p>
+                {product.sku && (
+                  <p className="mt-1 text-xs tracking-[0.12em] text-muted-foreground uppercase">
+                    SKU {product.sku}
+                  </p>
+                )}
 
                 <form
                   onSubmit={(e) => {
