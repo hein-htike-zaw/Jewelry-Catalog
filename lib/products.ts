@@ -11,13 +11,34 @@ export type ProductType =
 
 export type Construction = 'Solid' | 'Hollow'
 export type Cut = 'Diamond-Cut' | 'Regular'
+export type SurfaceFinish = 'Regular' | 'Pavé'
 export type MetalColor = 'Yellow' | 'Rose' | 'White'
 export type Finish = 'Plain' | 'Two-Tone'
 
+export interface ProductSizeView {
+  widthMm: number
+  lengthInches: number
+  image: string
+}
+
 export interface ProductVariant {
+  /** Stable variant reference for future admin/database records. */
+  id?: string
+  /** Optional product photo for this exact construction, cut, color and finish. */
+  image?: string
+  /** Optional views belonging to this variant, with the main image first. */
+  gallery?: string[]
+  /** Preserve the full primary image when it is a comparison presentation. */
+  imageFit?: 'cover' | 'contain'
+  /** Optional size-specific visual guide; views do not create stock combinations. */
+  sizeGuide?: { approximate: boolean; overviewImage?: string; views: ProductSizeView[] }
+  /** Chain cross-section, when construction determines its shape. */
+  profile?: 'Round' | 'Square'
   construction: Construction
   /** Surface cut (e.g. diamond-cut vs. plain-drawn wire). Only some chain styles vary on this — omit when a product doesn't. */
   cut?: Cut
+  /** Optional gold surface treatment, independent of cut and two-tone color. */
+  surface?: SurfaceFinish
   color: MetalColor
   finish: Finish
 }
@@ -115,12 +136,22 @@ export interface Product {
   type: ProductType
   /** Broad browsing group within a type, e.g. "Men's" for Rings or "Fancy" for Chains. */
   subcategory?: string
+  /** Detailed Gold browsing category, shared by 10K and 14K. */
+  goldCategory?: string
   /** Exact style shown on the product card image badge, e.g. "Rope" or "Miami Cuban". */
   style?: string
   weight: string
   image: string
   gallery?: string[]
   description: string
+  /** Catalog-only assortment presentation; sizes are shared across the pictured widths. */
+  chainDisplay?: {
+    construction: Construction
+    widthsMm: number[]
+    minLengthInches: number
+    maxLengthInches: number
+    imageAlt: string
+  }
   specs: { label: string; value: string }[]
   /** Standard lengths this style is stocked in, e.g. ['16"', '18"', '20"']. Only some product types (chains) use this. */
   lengths?: string[]
@@ -172,7 +203,7 @@ export const collections: {
     name: 'Gold',
     tagline: 'Solid 10K & 14K chains, bracelets and more',
     image: '/images/collection-gold.png',
-    count: 48,
+    count: 17,
   },
   {
     name: 'Diamond',
@@ -295,53 +326,178 @@ export const subcategoriesByType: Partial<Record<ProductType, string[]>> = {
   Bracelets: ['Regular', 'Fancy', 'ID', 'Child ID'],
 }
 
+export const figaroWidthsMm = [2, 3, 4, 5, 6]
+export const figaroLengthsInches = [16, 18, 20, 22, 24, 26]
+
+function figaroSizeGuide(construction: 'solid' | 'hollow'): NonNullable<ProductVariant['sizeGuide']> {
+  return {
+    approximate: true,
+    overviewImage: construction === 'solid'
+      ? '/images/products/figaro-solid-neck-assortment-v2.webp'
+      : '/images/products/figaro-hollow-neck-assortment.webp',
+    views: figaroWidthsMm.flatMap((widthMm) => figaroLengthsInches.map((lengthInches) => ({
+      widthMm, lengthInches,
+      image: `/images/products/figaro-${construction}-${widthMm}mm-${lengthInches}in-guide.webp`,
+    }))),
+  }
+}
+
 export const products: Product[] = [
   {
     slug: 'cuban-link-chain-14k',
-    name: 'Cuban Link Chain',
+    name: 'Miami Cuban Link Chain',
     collection: 'Gold',
     karat: '14K',
     type: 'Chains',
     subcategory: 'Assorted',
     style: 'Miami Cuban',
-    weight: '42.6 g',
-    image: '/images/products/cuban-link-chain-14k.jpg',
+    goldCategory: 'Assorted',
+    weight: 'Varies by size & construction',
+    image: '/images/products/gold-cuban-link-chain-14k-catalog.webp',
+    gallery: ['/images/products/gold-cuban-link-chain-14k-catalog.webp'],
     description:
-      'A substantial solid 14K yellow gold Cuban link chain with a high-polish finish. A cornerstone wholesale piece with consistent link geometry and a secure box clasp.',
+      'A substantial 14K Miami Cuban link chain with a high-polish finish. Yellow gold is offered solid or hollow; white gold is offered solid only. A secure box clasp completes the closely interlocking rounded links.',
     specs: [
-      { label: 'Metal', value: '14K Yellow Gold' },
+      { label: 'Metal', value: '14K Gold' },
       { label: 'Width range', value: '4 mm – 8 mm' },
-      { label: 'Construction', value: 'Solid' },
+      { label: 'Construction', value: 'Solid or Hollow' },
+      { label: 'Colors', value: 'Yellow; White in solid only' },
       { label: 'Clasp', value: 'Box with safety' },
       { label: 'Finish', value: 'High polish' },
     ],
     lengths: ['16"', '18"', '20"', '22"', '24"'],
+    variants: [
+      { id: 'miami-cuban-solid-yellow', construction: 'Solid', color: 'Yellow', finish: 'Plain', image: '/images/products/gold-cuban-link-chain-14k-catalog.webp' },
+      { id: 'miami-cuban-solid-white', construction: 'Solid', color: 'White', finish: 'Plain', image: '/images/products/miami-cuban-solid-white.webp' },
+      { id: 'miami-cuban-hollow-yellow', construction: 'Hollow', color: 'Yellow', finish: 'Plain', image: '/images/products/miami-cuban-hollow-yellow.webp' },
+    ],
   },
   {
-    slug: 'rope-chain-10k',
+    slug: 'cuban-curb-chain-14k',
+    name: 'Cuban Curb Chain',
+    collection: 'Gold',
+    karat: '14K',
+    type: 'Chains',
+    subcategory: 'Assorted',
+    style: 'Cuban Curb',
+    goldCategory: 'Assorted',
+    weight: 'Varies by size & construction',
+    image: '/images/products/cuban-curb-solid-regular-yellow.webp',
+    gallery: ['/images/products/cuban-curb-solid-regular-yellow.webp'],
+    description: 'A 14K Cuban curb chain with elongated interlocking links, offered solid or hollow. Pavé styles have small white-toned patterned areas on the link faces, with the rest of each link kept smooth yellow gold; no stones. Solid regular is also offered in yellow-and-white two-tone.',
+    specs: [
+      { label: 'Metal', value: '14K Gold' },
+      { label: 'Construction', value: 'Solid or Hollow' },
+      { label: 'Gold finishes', value: 'Regular or Pavé (no stones)' },
+      { label: 'Pavé pattern', value: 'Small white-toned link faces; polished yellow gold elsewhere' },
+      { label: 'Two-tone', value: 'Yellow / White, solid regular only' },
+      { label: 'Sizes & weight', value: 'Confirmed with wholesale quote' },
+    ],
+    diamondType: 'None',
+    variants: [
+      { id: 'cuban-curb-solid-regular-yellow', construction: 'Solid', surface: 'Regular', color: 'Yellow', finish: 'Plain', image: '/images/products/cuban-curb-solid-regular-yellow.webp' },
+      { id: 'cuban-curb-solid-regular-two-tone', construction: 'Solid', surface: 'Regular', color: 'Yellow', finish: 'Two-Tone', image: '/images/products/cuban-curb-solid-regular-two-tone.webp' },
+      { id: 'cuban-curb-solid-pave-yellow', construction: 'Solid', surface: 'Pavé', color: 'Yellow', finish: 'Plain', image: '/images/products/cuban-curb-solid-pave-localized.webp' },
+      { id: 'cuban-curb-hollow-regular-yellow', construction: 'Hollow', surface: 'Regular', color: 'Yellow', finish: 'Plain', image: '/images/products/cuban-curb-hollow-regular-yellow.webp' },
+      { id: 'cuban-curb-hollow-pave-yellow', construction: 'Hollow', surface: 'Pavé', color: 'Yellow', finish: 'Plain', image: '/images/products/cuban-curb-hollow-pave-localized.webp' },
+    ],
+  },
+  {
+    slug: 'figaro-chain-14k',
+    name: 'Figaro Chain',
+    collection: 'Gold',
+    karat: '14K',
+    type: 'Chains',
+    subcategory: 'Assorted',
+    style: 'Figaro',
+    goldCategory: 'Assorted',
+    weight: 'Varies by size & construction',
+    image: '/images/products/figaro-solid-neck-assortment-v2.webp',
+    chainDisplay: {
+      construction: 'Solid',
+      widthsMm: [2, 3, 4, 5, 6],
+      minLengthInches: 16,
+      maxLengthInches: 26,
+      imageAlt: 'Five solid yellow gold Figaro chains layered on a necklace display, from 2 mm to 6 mm',
+    },
+    gallery: ['/images/products/figaro-solid-neck-assortment-v2.webp'],
+    description: 'A classic 14K yellow gold Figaro chain with a repeating three-short, one-long link pattern. Available in solid or hollow construction, in yellow gold only.',
+    specs: [
+      { label: 'Metal', value: '14K Yellow Gold' },
+      { label: 'Construction', value: 'Solid or Hollow' },
+      { label: 'Pattern', value: 'Three short links / one elongated link' },
+      { label: 'Widths', value: '2, 3, 4, 5 and 6 mm, solid or hollow' },
+      { label: 'Lengths', value: '16–26 in, available for each width' },
+      { label: 'Weight', value: 'Confirmed with wholesale quote' },
+    ],
+    variants: [
+      {
+        id: 'figaro-solid-yellow', construction: 'Solid', color: 'Yellow', finish: 'Plain',
+        image: '/images/products/figaro-solid-neck-assortment-v2.webp', imageFit: 'contain',
+        gallery: ['/images/products/figaro-solid-neck-assortment-v2.webp'],
+        sizeGuide: figaroSizeGuide('solid'),
+      },
+      {
+        id: 'figaro-hollow-yellow', construction: 'Hollow', color: 'Yellow', finish: 'Plain',
+        image: '/images/products/figaro-hollow-neck-assortment.webp', imageFit: 'contain',
+        gallery: ['/images/products/figaro-hollow-neck-assortment.webp'],
+        sizeGuide: figaroSizeGuide('hollow'),
+      },
+    ],
+  },
+  {
+    slug: 'box-link-chain-14k',
+    name: 'Box Link Chain',
+    collection: 'Gold',
+    karat: '14K',
+    type: 'Chains',
+    subcategory: 'Assorted',
+    style: 'Box / David Yurman Style',
+    goldCategory: 'Assorted',
+    weight: 'Varies by size',
+    image: '/images/products/box-link-hollow-yellow.webp',
+    gallery: ['/images/products/box-link-hollow-yellow.webp'],
+    description: 'A 14K hollow box-link chain with articulated geometric links. Known in the showroom as the David Yurman-style chain, this style is offered in yellow, white or rose gold, in hollow construction only.',
+    specs: [
+      { label: 'Metal', value: '14K Gold' },
+      { label: 'Link style', value: 'Box links' },
+      { label: 'Construction', value: 'Hollow only' },
+      { label: 'Colors', value: 'Yellow, White, Rose' },
+      { label: 'Sizes & weight', value: 'Confirmed with wholesale quote' },
+    ],
+    variants: [
+      { id: 'box-link-hollow-yellow', construction: 'Hollow', color: 'Yellow', finish: 'Plain', image: '/images/products/box-link-hollow-yellow.webp' },
+      { id: 'box-link-hollow-white', construction: 'Hollow', color: 'White', finish: 'Plain', image: '/images/products/box-link-hollow-white.webp' },
+      { id: 'box-link-hollow-rose', construction: 'Hollow', color: 'Rose', finish: 'Plain', image: '/images/products/box-link-hollow-rose.webp' },
+    ],
+  },
+  {
+    slug: 'rope-chain-14k',
     name: 'Rope Chain',
     collection: 'Gold',
-    karat: '10K',
+    karat: '14K',
     type: 'Chains',
-    subcategory: 'Fancy',
+    subcategory: 'Assorted',
     style: 'Rope',
+    goldCategory: 'Assorted',
     weight: 'Varies by size & construction',
-    image: '/images/product-gold-chain.png',
+    image: '/images/products/gold-rope-chain-10k-catalog.webp',
+    gallery: ['/images/products/gold-rope-chain-10k-catalog.webp'],
     description:
-      'A classic 10K rope chain, available solid or hollow, diamond-cut for extra sparkle or in a regular finish. Solid regular comes in yellow, rose or white; diamond-cut and hollow are yellow only. A versatile, fast-moving wholesale staple.',
+      'A classic 14K rope chain, available solid or hollow, diamond-cut for extra sparkle or in a regular finish. Solid regular comes in yellow, rose or white; diamond-cut and hollow are yellow only. A versatile, fast-moving wholesale staple.',
     specs: [
-      { label: 'Metal', value: '10K Gold' },
+      { label: 'Metal', value: '14K Gold' },
       { label: 'Width range', value: '2 mm – 4 mm' },
       { label: 'Clasp', value: 'Lobster' },
     ],
     lengths: ['16"', '18"', '20"', '22"', '24"'],
     variants: [
-      { construction: 'Solid', cut: 'Regular', color: 'Yellow', finish: 'Plain' },
-      { construction: 'Solid', cut: 'Regular', color: 'Rose', finish: 'Plain' },
-      { construction: 'Solid', cut: 'Regular', color: 'White', finish: 'Plain' },
-      { construction: 'Solid', cut: 'Diamond-Cut', color: 'Yellow', finish: 'Plain' },
-      { construction: 'Hollow', cut: 'Regular', color: 'Yellow', finish: 'Plain' },
-      { construction: 'Hollow', cut: 'Diamond-Cut', color: 'Yellow', finish: 'Plain' },
+      { construction: 'Solid', cut: 'Regular', color: 'Yellow', finish: 'Plain', image: '/images/products/gold-rope-chain-10k-catalog.webp' },
+      { construction: 'Solid', cut: 'Regular', color: 'Rose', finish: 'Plain', image: '/images/products/rope-solid-regular-rose.webp' },
+      { construction: 'Solid', cut: 'Regular', color: 'White', finish: 'Plain', image: '/images/products/rope-solid-regular-white.webp' },
+      { construction: 'Solid', cut: 'Diamond-Cut', color: 'Yellow', finish: 'Plain', image: '/images/products/rope-solid-diamond-cut-yellow.webp' },
+      { construction: 'Hollow', cut: 'Regular', color: 'Yellow', finish: 'Plain', image: '/images/products/gold-rope-chain-10k-catalog.webp' },
+      { construction: 'Hollow', cut: 'Diamond-Cut', color: 'Yellow', finish: 'Plain', image: '/images/products/rope-hollow-diamond-cut-yellow.webp' },
     ],
   },
   {
@@ -462,25 +618,27 @@ export const products: Product[] = [
     type: 'Chains',
     subcategory: 'Assorted',
     style: 'Franco',
+    goldCategory: 'Assorted',
     weight: 'Varies by size & construction',
-    image: '/images/product-gold-chain.png',
+    image: '/images/products/franco-round-solid-yellow-plain.webp',
+    gallery: ['/images/products/franco-round-solid-yellow-plain.webp'],
     description:
-      'A 14K Franco chain with a tight, square-woven link pattern. Offered solid in yellow, rose or white — plain or two-tone — and hollow in yellow plain only.',
+      'A 14K Franco chain with a dense V-link weave. Solid styles have a round profile in yellow, yellow two-tone, rose, rose two-tone or plain white gold. Hollow Franco has a square profile and comes in plain yellow gold only.',
     specs: [
       { label: 'Metal', value: '14K Gold' },
       { label: 'Width range', value: '2 mm – 5 mm' },
+      { label: 'Profile', value: 'Solid: Round / Hollow: Square' },
       { label: 'Clasp', value: 'Box with safety' },
       { label: 'Finish', value: 'High polish' },
     ],
     lengths: ['16"', '18"', '20"', '22"', '24"'],
     variants: [
-      { construction: 'Solid', color: 'Yellow', finish: 'Plain' },
-      { construction: 'Solid', color: 'Yellow', finish: 'Two-Tone' },
-      { construction: 'Solid', color: 'Rose', finish: 'Plain' },
-      { construction: 'Solid', color: 'Rose', finish: 'Two-Tone' },
-      { construction: 'Solid', color: 'White', finish: 'Plain' },
-      { construction: 'Solid', color: 'White', finish: 'Two-Tone' },
-      { construction: 'Hollow', color: 'Yellow', finish: 'Plain' },
+      { construction: 'Solid', profile: 'Round', color: 'Yellow', finish: 'Plain', image: '/images/products/franco-round-solid-yellow-plain.webp' },
+      { construction: 'Solid', profile: 'Round', color: 'Yellow', finish: 'Two-Tone', image: '/images/products/franco-round-solid-yellow-two-tone.webp' },
+      { construction: 'Solid', profile: 'Round', color: 'Rose', finish: 'Plain', image: '/images/products/franco-round-solid-rose-plain.webp' },
+      { construction: 'Solid', profile: 'Round', color: 'Rose', finish: 'Two-Tone', image: '/images/products/franco-round-solid-rose-two-tone.webp' },
+      { construction: 'Solid', profile: 'Round', color: 'White', finish: 'Plain', image: '/images/products/franco-round-solid-white-plain.webp' },
+      { construction: 'Hollow', profile: 'Square', color: 'Yellow', finish: 'Plain', image: '/images/products/gold-franco-chain-14k-catalog.webp' },
     ],
   },
   {
@@ -491,8 +649,10 @@ export const products: Product[] = [
     type: 'Chains',
     subcategory: 'Fancy',
     style: 'Paperclip',
+    goldCategory: 'Fancy',
     weight: '15.8 g',
-    image: '/images/product-gold-chain.png',
+    image: '/images/products/gold-paperclip-chain-14k-catalog.webp',
+    gallery: ['/images/products/gold-paperclip-chain-14k-catalog.webp'],
     description:
       'An elongated 14K yellow gold paperclip chain with a bold, modern link silhouette. A fast-moving fashion-forward piece.',
     specs: [
@@ -613,13 +773,6 @@ export const products: Product[] = [
       { label: 'Setting', value: 'Pavé' },
     ],
   },
-  // Diamond > Earrings — same taxonomy as Lab Diamond Earrings (Earring
-  // Style / Design Style / Setting Type / Diamond Shape / Total Carat
-  // Weight / Diamond Color / Clarity / Gold Color), reusing those shared
-  // types and option lists, but with diamondType: 'Natural', karat varying
-  // between 10K and 14K (natural Diamond isn't 14K-only like Lab Diamond),
-  // and the full Yellow/Rose/White gold range (no Rose restriction here).
-  // Illustrative mock products, same status as the rest of this file.
   {
     slug: 'diamond-halo-stud-earrings',
     name: 'Natural Halo Stud Earrings',
@@ -969,14 +1122,6 @@ export const products: Product[] = [
     clarity: 'VS1',
     goldColor: 'White',
   },
-  // Lab Diamond > Earrings — new MVP category. Illustrative mock products
-  // (same status as the rest of this file's data) covering a reasonable
-  // spread of Earring Style / Design Style / Setting Type / Diamond Shape
-  // without inventing values the filters wouldn't otherwise need: Nature
-  // Inspired, Geometric, and Statement design styles are deliberately left
-  // unused here rather than padded out with fabricated products. No
-  // dedicated earring photography exists yet, so these use the shared
-  // placeholder image rather than borrowing an unrelated product's photo.
   {
     slug: 'lab-diamond-halo-stud-earrings',
     name: 'Halo Stud Earrings',
@@ -1165,6 +1310,72 @@ export const products: Product[] = [
     ],
   },
 ]
+
+// Only complete, saved galleries are enabled by scripts/publish-chain-galleries.cjs.
+// BEGIN COMPLETED CHAIN GALLERIES
+const completedChainGallerySlugs = new Set<string>([
+  "cuban-link-chain-14k",
+  "cuban-curb-chain-14k",
+  "box-link-chain-14k",
+  "rope-chain-14k",
+  "franco-chain-14k",
+  "paperclip-chain-14k"
+])
+// END COMPLETED CHAIN GALLERIES
+
+export function chainGalleryVariantKey(product: Product, variant: ProductVariant) {
+  return variant.id ?? [product.style?.toLowerCase(), variant.construction.toLowerCase(), variant.cut?.toLowerCase(), variant.color.toLowerCase(), variant.finish.toLowerCase()].filter(Boolean).join('-')
+}
+
+const chainOverviewVersions = new Set(['miami-cuban-solid-yellow', 'cuban-curb-solid-regular-yellow', 'franco-solid-rose-plain', 'paperclip-solid-yellow-plain'])
+
+for (const product of products) {
+  if (!completedChainGallerySlugs.has(product.slug)) continue
+  const box = product.slug === 'box-link-chain-14k'
+  const widths = box ? [0.8, 1, 1.5, 2] : [2, 3, 4, 5, 6]
+  const lengths = box ? [16, 18, 20, 22] : [16, 18, 20, 22, 24, 26]
+  const variants: ProductVariant[] = product.variants ?? [{ construction: 'Solid', color: 'Yellow', finish: 'Plain', image: product.image }]
+  product.variants = variants.map((variant) => {
+    const key = chainGalleryVariantKey(product, variant)
+    const overviewImage = `/images/products/${key}-neck-assortment${chainOverviewVersions.has(key) ? '-v2' : ''}.webp`
+    return {
+      ...variant,
+      id: key,
+      image: overviewImage,
+      gallery: [overviewImage],
+      imageFit: 'contain',
+      sizeGuide: {
+        approximate: true,
+        overviewImage,
+        views: widths.flatMap((widthMm) => lengths.map((lengthInches) => ({
+          widthMm,
+          lengthInches,
+          image: key === 'rope-solid-regular-yellow-plain' && widthMm === 3 && lengthInches === 20
+            ? '/images/products/rope-solid-regular-yellow-3mm-20in-guide.webp'
+            : `/images/products/${key}-${widthMm}mm-${lengthInches}in-guide.webp`,
+        }))),
+      },
+    }
+  })
+  const first = product.variants[0]
+  product.image = first.image!
+  product.gallery = [product.image]
+  product.lengths = lengths.map((length) => `${length}"`)
+  product.weight = new Set(variants.map((variant) => variant.construction)).size > 1 ? 'Varies by size & construction' : 'Varies by size'
+  product.chainDisplay = {
+    construction: first.construction,
+    widthsMm: widths,
+    minLengthInches: lengths[0],
+    maxLengthInches: lengths[lengths.length - 1],
+    imageAlt: `${widths.length} ${first.construction.toLowerCase()} ${first.color.toLowerCase()} gold ${product.name} necklaces layered on a necklace display, widths ${widths.join(', ')} mm from top to bottom`,
+  }
+  product.specs = product.specs.filter((spec) => !['Width range', 'Widths', 'Lengths', 'Sizes & weight', 'Weight'].includes(spec.label))
+  product.specs.push(
+    { label: 'Widths', value: `${widths.join(', ')} mm` },
+    { label: 'Lengths', value: `${lengths[0]}–${lengths[lengths.length - 1]} in, available for each width` },
+    { label: 'Weight', value: 'Confirmed with wholesale quote' },
+  )
+}
 
 export function getProduct(slug: string) {
   return products.find((p) => p.slug === slug)

@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import type { Construction, Cut, Finish, MetalColor, ProductVariant } from '@/lib/products'
+import type { Finish, MetalColor, ProductVariant } from '@/lib/products'
+import { useProductVariant } from '@/components/product/product-variant-context'
+import { selectVariantAxis, variantAxisOptions, variantColorOptions, type VariantAxis } from '@/lib/product-variants'
 
 const COLOR_HEX: Record<MetalColor, string> = {
   Yellow: '#D8B04A',
@@ -15,11 +17,6 @@ function swatchBackground(color: MetalColor, finish: Finish) {
   return `linear-gradient(135deg, ${COLOR_HEX[color]} 50%, ${accent} 50%)`
 }
 
-function uniqueValues<T, K extends keyof T>(items: T[], key: K): NonNullable<T[K]>[] {
-  const values = items.map((item) => item[key]).filter((v): v is NonNullable<T[K]> => v != null)
-  return [...new Set(values)]
-}
-
 export function VariantPicker({
   lengths = [],
   variants = [],
@@ -27,45 +24,44 @@ export function VariantPicker({
   lengths?: string[]
   variants?: ProductVariant[]
 }) {
-  // Axes appear in a fixed order — Length, then Construction, then Cut,
-  // then Color — so the layout stays predictable across products even as
-  // more products pick up more axes. Each row only renders when the
-  // product actually varies on it.
+  const sharedVariant = useProductVariant()
+  // Optional axes are derived from stored combinations, never a Cartesian product.
   const [length, setLength] = useState(lengths[0])
+  const [selected, setSelected] = useState<ProductVariant | undefined>(variants[0])
+  const constructions = variantAxisOptions(variants, selected, 'construction')
+  const cuts = variantAxisOptions(variants, selected, 'cut')
+  const surfaces = variantAxisOptions(variants, selected, 'surface')
+  const options = variantColorOptions(variants, selected)
+  const sizeViews = selected?.sizeGuide?.views ?? []
+  const widthMm = sharedVariant?.widthMm
+  const lengthInches = sharedVariant?.lengthInches
+  const previewWidths = [...new Set(sizeViews.map((view) => view.widthMm))].sort((a, b) => a - b)
+  const previewLengths = [...new Set(sizeViews.filter((view) => widthMm == null || view.widthMm === widthMm).map((view) => view.lengthInches))].sort((a, b) => a - b)
 
-  const constructions = uniqueValues(variants, 'construction')
-  const [construction, setConstruction] = useState<Construction>(constructions[0])
-
-  const afterConstruction = variants.filter((v) => v.construction === construction)
-  const cuts = uniqueValues(afterConstruction, 'cut')
-  const [cut, setCut] = useState<Cut | undefined>(cuts[0])
-
-  const options = cuts.length
-    ? afterConstruction.filter((v) => v.cut === cut)
-    : afterConstruction
-  const [selected, setSelected] = useState<ProductVariant | undefined>(options[0])
-
-  const changeConstruction = (c: Construction) => {
-    setConstruction(c)
-    const pool = variants.filter((v) => v.construction === c)
-    const poolCuts = uniqueValues(pool, 'cut')
-    const nextCut = poolCuts[0]
-    setCut(nextCut)
-    const nextOptions = poolCuts.length ? pool.filter((v) => v.cut === nextCut) : pool
-    setSelected(nextOptions[0])
+  const selectVariant = (variant: ProductVariant | undefined) => {
+    setSelected(variant)
+    sharedVariant?.setVariant(variant)
   }
 
-  const changeCut = (c: Cut) => {
-    setCut(c)
-    const nextOptions = afterConstruction.filter((v) => v.cut === c)
-    setSelected(nextOptions[0])
+  const changeAxis = (axis: VariantAxis, value: string) => {
+    const next = selectVariantAxis(variants, selected, axis, value)
+    if (next) selectVariant(next)
   }
 
   if (lengths.length === 0 && variants.length === 0) return null
 
   return (
     <div className="mt-8 space-y-5 border-t border-border/70 pt-8">
-      {lengths.length > 1 && (
+      {sizeViews.length > 0 && (
+        <div className="space-y-5">
+          <ToggleRow label="Width" options={previewWidths.map((width) => `${width} mm`)} value={widthMm == null ? '' : `${widthMm} mm`}
+            onChange={(value) => sharedVariant?.setWidthMm(parseFloat(value))} />
+          <ToggleRow label="Length" options={previewLengths.map((inches) => `${inches}\"`)} value={lengthInches == null ? '' : `${lengthInches}\"`}
+            onChange={(value) => sharedVariant?.setLengthInches(parseFloat(value))} />
+          <p className="text-xs leading-relaxed text-muted-foreground">{!sharedVariant?.hasSizeSelection ? 'Choose both width and length to view a single chain. ' : ''}{selected?.sizeGuide?.approximate ? 'Approximate visual guide; actual fit varies with neck size.' : ''}</p>
+        </div>
+      )}
+      {!sizeViews.length && lengths.length > 1 && (
         <ToggleRow label="Length" options={lengths} value={length} onChange={setLength} />
       )}
 
@@ -73,14 +69,18 @@ export function VariantPicker({
         <ToggleRow
           label="Construction"
           options={constructions}
-          value={construction}
-          onChange={changeConstruction}
+          value={selected?.construction ?? ''}
+          onChange={(value) => changeAxis('construction', value)}
         />
       )}
+      {constructions.length === 1 && <p className="text-sm text-muted-foreground">Construction: <span className="text-foreground">{constructions[0]}</span></p>}
 
       {cuts.length > 1 && (
-        <ToggleRow label="Cut" options={cuts} value={cut as Cut} onChange={changeCut} />
+        <ToggleRow label="Cut" options={cuts} value={selected?.cut ?? ''} onChange={(value) => changeAxis('cut', value)} />
       )}
+
+      {surfaces.length > 1 && <ToggleRow label="Gold finish" options={surfaces} value={selected?.surface ?? ''} onChange={(value) => changeAxis('surface', value)} />}
+      {selected?.surface === 'Pavé' && <p className="text-xs text-muted-foreground">Pavé is a textured gold finish. No stones. The pattern is limited to small white-toned link faces, with polished yellow gold elsewhere.</p>}
 
       {selected && (
         <div>
@@ -96,9 +96,10 @@ export function VariantPicker({
               )
               return options.length > 1 ? (
                 <button
-                  key={`${v.color}-${v.finish}`}
-                  onClick={() => setSelected(v)}
+                  key={v.id ?? `${v.color}-${v.finish}`}
+                  onClick={() => selectVariant(v)}
                   aria-label={`${v.color} ${v.finish}`}
+                  aria-pressed={isSelected}
                   className={[
                     'size-8 shrink-0 rounded-full border-2 transition-colors',
                     isSelected ? 'border-gold' : 'border-transparent hover:border-border',
@@ -119,6 +120,8 @@ export function VariantPicker({
           </div>
           <p className="mt-3 text-sm text-foreground">
             {selected.color} · {selected.finish}
+            {selected.surface ? ` · ${selected.surface === 'Pavé' ? 'Pavé gold finish' : 'Regular gold finish'}` : ''}
+            {selected.profile ? ` · ${selected.profile} profile` : ''}
           </p>
         </div>
       )}
@@ -140,10 +143,12 @@ function ToggleRow<T extends string>({
   return (
     <div>
       <p className="mb-3 text-xs tracking-luxe text-muted-foreground uppercase">{label}</p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <button
             key={o}
+            type="button"
+            aria-pressed={o === value}
             onClick={() => onChange(o)}
             className={[
               'border px-4 py-2 text-xs tracking-[0.14em] uppercase transition-colors',

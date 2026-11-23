@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
@@ -7,6 +7,7 @@ import { ProductGallery } from '@/components/product/product-gallery'
 import { InquiryDialog } from '@/components/product/inquiry-dialog'
 import { ProductCard } from '@/components/product-card'
 import { VariantPicker } from '@/components/product/variant-picker'
+import { ProductVariantProvider } from '@/components/product/product-variant-context'
 import { getProduct, getRelated, products } from '@/lib/products'
 
 export function generateStaticParams() {
@@ -19,6 +20,7 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  if (slug === 'rope-chain-10k') permanentRedirect('/product/rope-chain-14k')
   const product = getProduct(slug)
   if (!product) notFound()
 
@@ -49,6 +51,7 @@ export default async function ProductPage({
             <span className="text-foreground">{product.name}</span>
           </nav>
 
+          <ProductVariantProvider key={product.slug} initialVariant={product.variants?.[0]}>
           <div className="mt-8 grid gap-12 lg:grid-cols-2 lg:gap-16">
             <ProductGallery images={gallery} name={product.name} />
 
@@ -108,6 +111,8 @@ export default async function ProductPage({
               </div>
             </div>
           </div>
+
+          </ProductVariantProvider>
 
           {/* Related */}
           <section className="mt-24 border-t border-border/70 pt-16 lg:mt-32">
